@@ -2,7 +2,16 @@
 
 <br/>
 
-## 자판기 시스템
+## 목차
+1. [자판기 시스템](#자판기-시스템)
+2. [영화 예매 시스템](#영화-예매-시스템)
+3. [우편 배달 시스템](#우편-배달-시스템)
+4. [로그인 시스템 01](#로그인-시스템-01-사용자-회원-가입-정보-저장)
+5. [로그인 시스템 02](#로그인-시스템-02)
+
+<br/>
+
+### 자판기 시스템
 ```java
 package src.example;
 
@@ -76,7 +85,7 @@ public class VendingMachine {
 
 <br/><br/>
 
-## 영화 예매 시스템
+### 영화 예매 시스템
 ```java
 package src.example;
 
@@ -153,7 +162,7 @@ public class MovieReservation {
 
 <br/><br/>
 
-## 우편 배달 시스템
+### 우편 배달 시스템
 ```java
 package src.example;
 
@@ -229,3 +238,444 @@ public class PostDeliverySystem {
     }
 }
 ```
+
+<br/><br/>
+
+### 로그인 시스템 01 (사용자 회원 가입 정보 저장)
+```java
+package src.example;
+
+import java.io.*;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Scanner;
+
+/*
+ * 로그인 시스템 예제
+ * 
+ * 사용자 데이터는 "users.txt" 파일에 저장됩니다.
+ * 사용자는 아이디와 비밀번호를 입력하여 로그인하거나 회원 가입할 수 있습니다.
+ * 비밀번호는 SHA-256 해시 알고리즘을 사용하여 저장됩니다.
+ * 사용자 데이터 파일 형식: "아이디,해시된 비밀번호"
+ * 예시: "user1,5e884898da28047151d0e56f8dc6292773603d0d4c2f6b8c7a9b1c5f2a3b4c5"
+ * 사용자가 로그인할 때 입력한 비밀번호는 해시된 후 저장된 해시와 비교됩니다.
+ * 회원 가입 시 아이디 중복 체크를 수행합니다.
+ * 시스템은 콘솔에서 사용자 입력을 받으며, 잘못된 입력에 대한 예외 처리를 포함합니다.
+ * 사용자가 로그인에 성공하면 "로그인 성공!" 메시지를 출력하고, 실패하면 "로그인 실패!" 메시지를 출력합니다.
+ * 회원 가입이 성공하면 "회원 가입이 완료되었습니다." 메시지를 출력합니다.
+ * 시스템은 사용자가 종료를 선택할 때까지 계속 실행됩니다.
+ * 이 코드는 Java의 기본 입출력, 파일 처리, 예외 처리 및 암호화 기능을 사용하여 구현되었습니다.
+ */
+
+public class LoginSystem_01 {
+    private static final String USER_DATA_FILE = "users.txt";
+    private Scanner scanner;
+
+    public LoginSystem_01() {
+        scanner = new Scanner(System.in);
+    }
+
+    public static void main(String[] args) {
+        LoginSystem_01 system = new LoginSystem_01();
+        system.run();
+    }
+
+    public void run() {
+        while (true) {
+            System.out.println("=== 로그인 시스템 ===");
+            System.out.println("1. 로그인");
+            System.out.println("2. 회원 가입");
+            System.out.println("3. 종료");
+            System.out.print("선택: ");
+            int choice = scanner.nextInt();
+            scanner.nextLine(); // 버퍼 비우기
+
+            if (choice == 1) {
+                login();
+            } else if (choice == 2) {
+                register();
+            } else if (choice == 3) {
+                System.out.println("시스템을 종료합니다.");
+                break;
+            } else {
+                System.out.println("잘못된 선택입니다.");
+            }
+        }
+    }
+
+    private void login() {
+        System.out.print("아이디 입력: ");
+        String id = scanner.nextLine();
+        System.out.print("비밀번호 입력: ");
+        String password = scanner.nextLine();
+
+        if (authenticate(id, password)) {
+            System.out.println("로그인 성공!");
+        } else {
+            System.out.println("아이디 또는 비밀번호가 잘못되었습니다.");
+        }
+    }
+
+    private boolean authenticate(String id, String password) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(USER_DATA_FILE))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] user = line.split(",");
+                String storedId = user[0];
+                String storedPassword = user[1];
+
+                if (id.equals(storedId) && storedPassword.equals(hashPassword(password))) {
+                    return true;
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("사용자 데이터를 읽는 도중 오류가 발생했습니다.");
+        }
+        return false;
+    }
+
+    private void register() {
+        System.out.print("아이디 입력: ");
+        String id = scanner.nextLine();
+        System.out.print("비밀번호 입력: ");
+        String password = scanner.nextLine();
+
+        if (isUserExists(id)) {
+            System.out.println("이미 존재하는 아이디입니다.");
+        } else {
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(USER_DATA_FILE, true))) {
+                writer.write(id + "," + hashPassword(password));
+                writer.newLine();
+                System.out.println("회원 가입이 완료되었습니다.");
+            } catch (IOException e) {
+                System.out.println("회원 가입 중 오류가 발생했습니다.");
+            }
+        }
+    }
+
+    private boolean isUserExists(String id) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(USER_DATA_FILE))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] user = line.split(",");
+                if (id.equals(user[0])) {
+                    return true;
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("사용자 데이터를 읽는 도중 오류가 발생했습니다.");
+        }
+        return false;
+    }
+
+    private String hashPassword(String password) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hashBytes = md.digest(password.getBytes());
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hashBytes) {
+                hexString.append(String.format("%02x", b));
+            }
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            System.out.println("암호화 알고리즘을 찾을 수 없습니다.");
+            return null;
+        }
+    }
+}
+```
+
+<br/><br/>
+
+### 로그인 시스템 02
+
+<br/>
+
+로그인 시스템 01과 다른점
+* 회원 가입 시 비밀번호 8자리 이상 영문, 숫자, 특수문자를 포함해야 한다.
+* 비밀번호 복구 기능 (실제 이메일 전송 API를 추가하지 않음)
+* 관리자 메뉴 추가
+
+<br/>
+
+```java
+package src.example;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Scanner;
+
+public class LoginSystem_02 {
+  
+  private static final String USER_DATA_FILE = "users.txt"; // 사용자 데이터 파일
+  private Scanner sc;
+  private String currentSessionUser = null; // 로그인한 사용자의 세션을 관리
+  
+  public LoginSystem_02() {
+    sc = new Scanner(System.in);
+  }
+
+  public static void main(String[] args) {
+    LoginSystem_02 system = new LoginSystem_02();
+    system.run();
+  }
+
+  public void run() {
+    while (true) {
+      // 로그인, 회원 가입, 종료 메뉴
+      System.out.println("=== 로그인 시스템 ===");
+      System.out.println("1. 로그인");
+      System.out.println("2. 회원 가입");
+      System.out.println("3. 비밀번호 복구");
+      System.out.println("4. 관리자 메뉴");
+      System.out.println("5. 종료");
+      System.out.print("선택: ");
+      int choice = sc.nextInt();
+      sc.nextLine(); // 버퍼 지우기
+
+      if (choice == 1) {
+        login();
+      } else if (choice == 2) {
+        register();
+      } else if (choice == 3) {
+        passwordRecovery();
+      } else if (choice == 4) {
+        adminMenu();
+      } else if (choice == 5) {
+        System.out.println("시스템을 종료합니다.");
+        break;
+      } else {
+        System.out.println("잘못된 선택입니다.");
+      }
+    }
+  }
+
+  // 로그인 처리
+  private void login() {
+    System.out.print("아이디 입력: ");
+    String id = sc.nextLine();
+    System.out.print("비밀번호 입력: ");
+    String password = sc.nextLine();
+
+    if (authenticate(id, password)) {
+      currentSessionUser = id; // 로그인 성공 시 세션 관리
+      System.out.println("로그인 성공");
+    } else {
+      System.out.println("아이디 또는 비밀번호가 잘못되었습니다.");
+    }
+  }
+
+  // 비밀번호 복구 기능
+  private void passwordRecovery() {
+    System.out.print("이메일을 입력해주세요: ");
+    String email = sc.nextLine();
+
+    if (recoverPassword(email)) {
+      System.out.println("비밀번호 복구 링크가 " + email + "로 전송되었습니다.");
+    } else {
+      System.out.println("이메일을 찾을 수 없습니다.");
+    }
+  }
+
+  // 관리자 메뉴 (사용자 관리)
+  private void adminMenu() {
+    if (currentSessionUser == null || !currentSessionUser.equals("admin")) {
+      System.out.println("관리자만 접근 가능합니다.");
+      return;
+    }
+
+    System.out.println("=== 관리자 메뉴 ===");
+    System.out.println("1. 사용자 정보 삭제");
+    System.out.println("2. 시용자 정보 수정");
+    System.out.print("선택: ");
+    int choice = sc.nextInt();
+    sc.nextLine(); // 버퍼 비우기
+
+    if (choice == 1) {
+      deleteUser();
+    } else if (choice == 2) {
+      updateUser();
+    } else {
+      System.out.println("잘못된 선택입니다.");
+    }
+  }
+
+  // 사용자 인증
+  private boolean authenticate(String id, String password) {
+    try (BufferedReader reader = new BufferedReader(new FileReader(USER_DATA_FILE))) {
+      String line;
+
+      while ((line = reader.readLine()) != null) {
+        String[] user = line.split(",");
+        String storedId = user[0];
+        String storedPassword = user[1];
+
+        if (id.equals(storedId) && storedPassword.equals(hashPassword(password))) {
+          return true;
+        }
+      }
+    } catch (IOException e) {
+      System.out.println("사용자 데이터를 읽는 도중 오류가 발생했습니다.");
+    }
+    return false;
+  }
+
+  // 사용자 가입
+  private void register() {
+    System.out.print("아이디 입력: ");
+    String id = sc.nextLine();
+    System.out.print("비밀번호 입력: ");
+    String password = sc.nextLine();
+
+    if (isUserExists(id)) {
+      System.out.println("이미 존재하는 아이디입니다.");
+    } else {
+      if (isPasswordStrong(password)) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(USER_DATA_FILE))) {
+          writer.write(id + "," + hashPassword(password));
+          writer.newLine();
+          System.out.println("회원 가입이 완료되었습니다.");
+        } catch (IOException e) {
+          System.out.println("회원 가입 중 오류가 발생했습니다.");
+        }
+      } else {
+        System.out.println("비밀번호가 너무 약합니다. 영문, 숫자, 특수문자를 포함하여 8자 이상으로 설정해주세요.");
+      }
+    }
+  }
+
+  // 비밀번호 강도 검사
+  private boolean isPasswordStrong(String password) {
+    return password.length() >= 8 &&
+            password.matches(".*[A-Za-z].*") &&
+            password.matches(".*[0-9].*") &&
+            password.matches(".*[!@#$%^&*].*");
+  }
+
+  // 사용자 아이디 중복 검사
+  private boolean isUserExists(String id) {
+    try (BufferedReader reader = new BufferedReader(new FileReader(USER_DATA_FILE))) {
+      String line;
+
+      while ((line = reader.readLine()) != null) {
+        String[] user = line.split(",");
+        if (id.equals(user[0])) {
+          return true;
+        }
+      }
+    } catch (IOException e) {
+      System.out.println("사용자 데이터를 읽는 도중 오류가 발생했습니다.");
+    }
+    return false;
+  }
+
+  // 비밀번호 해싱
+  private String hashPassword(String password) {
+    try {
+      MessageDigest md = MessageDigest.getInstance("SHA-256");
+      byte[] hashBytes = md.digest(password.getBytes());
+      StringBuilder hexString = new StringBuilder();
+      for (byte b : hashBytes) {
+        hexString.append(String.format("%02x", b));
+      }
+      return hexString.toString();
+    } catch (NoSuchAlgorithmException e) {
+      System.out.println("암호화 알고리즘을 찾을 수 없습니다.");
+      return null;
+    }
+  }
+
+  // 비밀번호 복구 (이메일에 복구 링크를 보내는 기능)
+  private boolean recoverPassword(String email) {
+    // 실제 복구 기능은 이메일 발송 API 필요
+    return email.contains("@");
+  }
+
+  // 사용자 정보 삭제
+  private void deleteUser() {
+    System.out.print("삭제할 사용자 아이디 입력: ");
+    String id = sc.nextLine();
+
+    File tempFile = new File("temp.txt");
+    File inputFile = new File(USER_DATA_FILE);
+
+    try (BufferedReader reader = new BufferedReader(new FileReader(inputFile));
+         BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
+      
+        String line;
+        boolean userDeleted = false;
+
+        while ((line = reader.readLine()) != null) {
+          String[] user = line.split(",");
+          if (!user[0].equals(id)) {
+            writer.write(line);
+            writer.newLine();
+          } else {
+            userDeleted = true;
+          }
+        }
+
+        if (userDeleted) {
+          tempFile.renameTo(inputFile); // 삭제 후 파일 덮어쓰기
+          System.out.println("사용자가 삭제되었습니다.");
+        } else {
+          System.out.println("해당 사용자가 존재하지 않습니다.");
+        }
+    } catch (IOException e) {
+      System.out.println("사용자 삭제 중 오류가 발생했습니다.");
+    }
+  }
+
+  // 사용자 정보 수정
+  private void updateUser() {
+    System.out.print("수정할 사용자 아이디 입력: ");
+    String id = sc.nextLine();
+
+    File tempFile = new File("temp.txt");
+    File inputFile = new File(USER_DATA_FILE);
+
+    try (BufferedReader reader = new BufferedReader(new FileReader(inputFile));
+         BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
+
+        String line;
+        boolean userUpdated = false;
+        while ((line = reader.readLine()) != null) {
+            String[] user = line.split(",");
+            if (user[0].equals(id)) {
+                System.out.print("새로운 비밀번호 입력: ");
+                String newPassword = sc.nextLine();
+                if (isPasswordStrong(newPassword)) {
+                    writer.write(user[0] + "," + hashPassword(newPassword));
+                    writer.newLine();
+                    userUpdated = true;
+                } else {
+                    System.out.println("비밀번호가 너무 약합니다.");
+                }
+            } else {
+                writer.write(line);
+                writer.newLine();
+            }
+        }
+
+        if (userUpdated) {
+            tempFile.renameTo(inputFile); // 수정 후 파일 덮어쓰기
+            System.out.println("사용자 정보가 수정되었습니다.");
+        } else {
+            System.out.println("해당 사용자가 존재하지 않습니다.");
+        }
+    } catch (IOException e) {
+      System.out.println("사용자 수정 중 오류가 발생했습니다.");
+    }
+  }
+}
+```
+
+<br/><br/>
+
+[맨 위로 가기](#15일차)
